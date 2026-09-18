@@ -186,3 +186,48 @@ Once the system boots:
      cat /sys/block/zram0/comp_algorithm
      ```
      Ensure `lz4kd` or your preferred compressor is selected.
+
+---
+
+## Managing Future OS Updates (Pixel & GKI Devices)
+
+When your device receives an OTA update, Google may update the stock GKI kernel build. On Google Pixel devices, vendor modules (such as `exynos-drm` display drivers, touch, and power management) strictly require matching the stock kernel's `vermagic` string (`UTS_RELEASE`, which includes the commit hash `g<commit>` and build number `-ab<build>`).
+
+If a new OTA update introduces a new kernel build, you must update the device profile so CI builds against the matching commit and vermagic.
+
+### Automated Profile Extraction
+
+We provide an automated CLI helper in the repository: [`scripts/extract-device-profile.py`](scripts/extract-device-profile.py).
+
+Whenever you obtain the new stock `boot.img` (or `kernel.img` / `Image`) from the updated factory image or OTA:
+
+1. **Extract and update your device profile**:
+   ```bash
+   ./scripts/extract-device-profile.py path/to/stock/boot.img --update <codename>
+   ```
+   *(e.g., `./scripts/extract-device-profile.py boot.img --update komodo`)*
+
+   This automatically:
+   - Unpacks the boot image (via `avbroot` or `magiskboot`).
+   - Decompresses legacy LZ4 or Gzip kernel images.
+   - Parses the Linux version banner (`Linux version 6.1.xxx-...`).
+   - Extracts the exact commit SHA, release string, compiler banner, and build timestamp.
+   - Updates [`device-profiles.json`](device-profiles.json).
+
+2. **Commit and Push**:
+   ```bash
+   git commit -am "chore: update <codename> profile to <build>"
+   git push origin main
+   ```
+
+3. **Re-run the CI Workflow**:
+   Run the corresponding build workflow (e.g. `kernel-a14-6.1.yml` or `kernel-custom.yml`). The CI will automatically sync to the new pinned commit and produce a kernel with the exact vermagic required by the new vendor modules.
+
+### Quick Build Without Updating Profiles
+
+If you prefer not to edit `device-profiles.json`, you can inspect the extracted commit:
+```bash
+./scripts/extract-device-profile.py path/to/stock/boot.img --json
+```
+Then trigger **Custom Kernel Target** (`kernel-custom.yml`) in GitHub Actions and paste the commit hash directly into the **`kernel_commit`** input field.
+
