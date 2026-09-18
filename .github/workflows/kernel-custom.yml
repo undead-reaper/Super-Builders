@@ -177,6 +177,10 @@ on:
         description: "KSU commit override (empty = latest)"
         type: string
         default: ""
+      kernel_commit:
+        description: "Exact GKI git commit SHA (optional, overrides branch tip)"
+        type: string
+        default: ""
   workflow_call:
     inputs:
       kernel_target:
@@ -207,6 +211,9 @@ on:
         type: boolean
         default: false
       sukisu_commit:
+        type: string
+        default: ""
+      kernel_commit:
         type: string
         default: ""
 
@@ -389,12 +396,13 @@ jobs:
         env:
           ANDROID_VER: ${{ steps.parse.outputs.android_version }}
           KERNEL_VER: ${{ steps.parse.outputs.kernel_version }}
+          SUB_LEVEL: ${{ steps.parse.outputs.sub_level }}
         run: |
           CODENAME=""
           if [ -f device-profiles.json ]; then
             CODENAME=$(jq -r \
-              --arg av "$ANDROID_VER" --arg kv "$KERNEL_VER" \
-              '[.devices | to_entries[] | select(.value.android_version == $av and .value.kernel_version == $kv) | .key] | first // empty' \
+              --arg av "$ANDROID_VER" --arg kv "$KERNEL_VER" --arg sl "$SUB_LEVEL" \
+              '[.devices | to_entries[] | select(.value.android_version == $av and .value.kernel_version == $kv and (.value.sub_level == null or .value.sub_level == $sl)) | .key] | first // empty' \
               device-profiles.json)
           fi
           echo "codename=${CODENAME}" >> "$GITHUB_OUTPUT"
@@ -417,6 +425,7 @@ jobs:
           SL: ${{ steps.parse.outputs.sub_level }}
           SPL: ${{ steps.parse.outputs.os_patch_level }}
           DEV: ${{ steps.device.outputs.codename }}
+          COMMIT: ${{ inputs.kernel_commit }}
         run: |
           echo "## Build Target" >> "$GITHUB_STEP_SUMMARY"
           echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
@@ -425,6 +434,7 @@ jobs:
           echo "| Kernel | $KV.$SL |" >> "$GITHUB_STEP_SUMMARY"
           echo "| SPL | $SPL |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Device | ${DEV:-generic} |" >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$COMMIT" ] && echo "| Commit | $COMMIT |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Variant | ${{ inputs.ksu_variant }} |" >> "$GITHUB_STEP_SUMMARY"
 
   download-dependencies:
@@ -450,6 +460,7 @@ jobs:
       add_kpm: ${{ inputs.add_kpm }}
       sukisu_commit: ${{ inputs.sukisu_commit }}
       device_codename: ${{ needs.resolve.outputs.device_codename }}
+      kernel_commit: ${{ inputs.kernel_commit }}
 
   build-ksu-next:
     needs: [resolve, download-dependencies]
@@ -468,6 +479,7 @@ jobs:
       add_kpm: ${{ inputs.add_kpm }}
       sukisu_commit: ${{ inputs.sukisu_commit }}
       device_codename: ${{ needs.resolve.outputs.device_codename }}
+      kernel_commit: ${{ inputs.kernel_commit }}
 
   build-resukisu:
     needs: [resolve, download-dependencies]
@@ -486,6 +498,7 @@ jobs:
       add_kpm: ${{ inputs.add_kpm }}
       sukisu_commit: ${{ inputs.sukisu_commit }}
       device_codename: ${{ needs.resolve.outputs.device_codename }}
+      kernel_commit: ${{ inputs.kernel_commit }}
 
   build-wksu:
     needs: [resolve, download-dependencies]
@@ -504,3 +517,4 @@ jobs:
       add_kpm: ${{ inputs.add_kpm }}
       sukisu_commit: ${{ inputs.sukisu_commit }}
       device_codename: ${{ needs.resolve.outputs.device_codename }}
+      kernel_commit: ${{ inputs.kernel_commit }}

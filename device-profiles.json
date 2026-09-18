@@ -29,6 +29,22 @@
         "build_host": "build-host",
         "compiler_info": "Android (11368308, +pgo, +bolt, +lto, +mlgo, based on r510928) clang version 18.0.0"
       }
+    },
+    "komodo": {
+      "name": "Google Pixel 9 Pro XL",
+      "codename": "komodo",
+      "android_version": "android14",
+      "kernel_version": "6.1",
+      "sub_level": "172",
+      "os_patch_level": "2026-06",
+      "commit": "87c0a9ca734b0d9adb40283aea035ada95a67a90",
+      "stock_kernel": {
+        "release": "-android14-11-g87c0a9ca734b-ab16116086",
+        "version_string": "#1 SMP PREEMPT Wed Aug 19 01:40:20 UTC 2026",
+        "build_user": "build-user",
+        "build_host": "build-host",
+        "compiler_info": "Android (10087095, +pgo, +bolt, +lto, -mlgo, based on r487747c) clang version 17.0.2 (https://android.googlesource.com/toolchain/llvm-project d9f89f4d16663d5012e5c09495f3b30ece3d2362), LLD 17.0.2"
+      }
     }
   },
   "_template": {
@@ -38,6 +54,7 @@
     "kernel_version": "6.6",
     "sub_level": "30",
     "os_patch_level": "2025-01",
+    "commit": "optional_git_commit_sha",
     "stock_kernel": {
       "release": "-android15-6-xxxxx-gabcdef123456-ab12345678",
       "version_string": "#1 SMP PREEMPT Mon Jan 1 12:00:00 UTC 2025",

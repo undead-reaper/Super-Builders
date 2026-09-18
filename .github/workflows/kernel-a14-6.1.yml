@@ -51,8 +51,9 @@ on:
         type: choice
         options:
           - generic
+          - komodo
           - lake
-        default: "lake"
+        default: "komodo"
   workflow_call:
     inputs:
       ksu_variant:
@@ -81,7 +82,7 @@ on:
         default: ""
       device_codename:
         type: string
-        default: "lake"
+        default: "komodo"
 
 jobs:
   download-dependencies:

@@ -106,6 +106,9 @@ avbroot ota patch \
   --prepatched boot_custom.img
 ```
 
+> [!IMPORTANT]
+> Do **not** use `--replace boot boot_custom.img` with `avbroot ota patch`. The `--replace` option expects an already signed AVB image with an AVB header/footer, which causes `Invalid VBMeta header magic: [65, 78, 68, 82]` when passed a raw Android boot image (`ANDR...`). Always use `--prepatched boot_custom.img`.
+
 Then sideload `<patched_ota.zip>` from stock recovery:
 
 ```bash
@@ -118,15 +121,24 @@ adb sideload <patched_ota.zip>
 
 If your device setup allows flashing individual signed partitions via fastboot:
 
-1. Sign the repacked boot image with your AVB key:
+1. Unpack the original signed `boot.img` to extract its AVB metadata and footer configuration:
    ```bash
-   avbroot avb repack \
-     --input boot_custom.img \
+   avbroot avb unpack \
+     --input boot.img \
+     --output-info avb.toml \
+     --no-output-raw
+   ```
+
+2. Sign and append the AVB footer to your repacked boot image (`boot_custom.img`):
+   ```bash
+   avbroot avb pack \
+     --input-info avb.toml \
+     --input-raw boot_custom.img \
      --output boot_signed.img \
      --key <path/to/avb_private_key.key>
    ```
 
-2. Flash the signed boot image:
+3. Flash the signed boot image:
    ```bash
    fastboot flash boot boot_signed.img
    fastboot reboot

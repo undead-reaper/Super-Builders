@@ -49,6 +49,9 @@ on:
       device_codename:
         type: string
         default: ""
+      kernel_commit:
+        type: string
+        default: ""
 
 jobs:
   build:
@@ -140,6 +143,9 @@ jobs:
         ANDROID_VER: ${{ inputs.android_version }}
         KERNEL_VER: ${{ inputs.kernel_version }}
         OS_PATCH: ${{ inputs.os_patch_level }}
+        INPUT_CODENAME: ${{ inputs.device_codename }}
+        INPUT_COMMIT: ${{ inputs.kernel_commit }}
+        SUB_LEVEL: ${{ inputs.sub_level }}
       run: |
         FORMATTED_BRANCH="${ANDROID_VER}-${KERNEL_VER}-${OS_PATCH}"
 
@@ -152,6 +158,37 @@ jobs:
         fi
 
         repo --trace sync -c -j$(nproc --all) --fail-fast --no-tags --force-sync --no-clone-bundle
+
+        PROFILE_FILE="$GITHUB_WORKSPACE/device-profiles.json"
+        TARGET_COMMIT="$INPUT_COMMIT"
+        if [ -z "$TARGET_COMMIT" ] && [ -f "$PROFILE_FILE" ] && command -v jq &>/dev/null; then
+          DEVICE_CODENAME=""
+          if [ -n "$INPUT_CODENAME" ] && [ "$INPUT_CODENAME" != "generic" ]; then
+            PROFILE_SL=$(jq -r ".devices.${INPUT_CODENAME}.sub_level // empty" "$PROFILE_FILE")
+            if [ "$PROFILE_SL" = "$SUB_LEVEL" ]; then
+              DEVICE_CODENAME="$INPUT_CODENAME"
+            fi
+          fi
+          if [ -z "$DEVICE_CODENAME" ]; then
+            DEVICE_CODENAME=$(jq -r --arg kv "$KERNEL_VER" --arg sl "$SUB_LEVEL" \
+              '[.devices | to_entries[] | select(.key | startswith("_") | not) | select(.value.kernel_version == $kv and .value.sub_level == $sl) | .key] | first // empty' \
+              "$PROFILE_FILE")
+          fi
+          if [ -n "$DEVICE_CODENAME" ]; then
+            TARGET_COMMIT=$(jq -r ".devices.${DEVICE_CODENAME}.commit // .devices.${DEVICE_CODENAME}.stock_kernel.commit // empty" "$PROFILE_FILE")
+          fi
+        fi
+
+        if [ -n "$TARGET_COMMIT" ]; then
+          echo "Target commit specified: $TARGET_COMMIT"
+          cd common
+          if ! git cat-file -e "$TARGET_COMMIT" 2>/dev/null; then
+            echo "Fetching target commit $TARGET_COMMIT..."
+            git fetch --depth=1 https://android.googlesource.com/kernel/common "$TARGET_COMMIT"
+          fi
+          git checkout -f "$TARGET_COMMIT"
+          cd ..
+        fi
 
     - name: Extract Sublevel
       env:
