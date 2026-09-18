@@ -58,17 +58,33 @@ avbroot boot unpack --input boot.img
 
 This generates `boot.toml`, `kernel.img`, and `ramdisk.img.*` in your working directory.
 
-### Step 3: Replace Kernel & Repack
+### Step 3: Check Compression, Replace Kernel & Repack
 
-1. Replace `kernel.img` with your compiled `Image`:
-   ```bash
-   cp -f Image kernel.img
-   ```
+Check the format of the extracted stock `kernel.img`:
+```bash
+file kernel.img
+```
 
-2. Repack the boot image:
-   ```bash
-   avbroot boot pack --output boot_custom.img
-   ```
+- **If uncompressed (`Linux kernel ARM64 boot executable Image...`)**:
+  ```bash
+  cp -f Image kernel.img
+  ```
+
+- **If LZ4 compressed (`LZ4 compressed data...`, e.g., Google Pixel devices)**:
+  Google Pixel bootloaders (ABL) require the kernel to be compressed with **LZ4 legacy format** (`-l`). Do not use uncompressed `Image` or standard LZ4 frames, or the bootloader will hang on the static Google logo:
+  ```bash
+  lz4 -c -l -12 --favor-decSpeed Image > kernel.img
+  ```
+
+- **If Gzip compressed (`gzip compressed data...`)**:
+  ```bash
+  gzip -n -k -9 < Image > kernel.img
+  ```
+
+Once `kernel.img` matches the stock compression format, repack the boot image:
+```bash
+avbroot boot pack --output boot_custom.img
+```
 
 ---
 
